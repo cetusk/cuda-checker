@@ -1,0 +1,290 @@
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : off
+ numloops   : 1
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 0.080009 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : on
+ GPU blocks : x/2560, y/128, z/1
+ GPU grids  : x/10384, y/64
+ numloops   : 1
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 0.126319 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : on ( page-locked )
+ GPU blocks : x/2560, y/128, z/1
+ GPU grids  : x/10384, y/64
+ numloops   : 1
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 0.029241 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : on ( unified memory )
+ GPU blocks : x/2560, y/128, z/1
+ GPU grids  : x/10384, y/64
+ numloops   : 1
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 0.275094 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : off
+ numloops   : 10
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 0.598999 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : on
+ GPU blocks : x/2560, y/128, z/1
+ GPU grids  : x/10384, y/64
+ numloops   : 10
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 0.942387 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : on ( page-locked )
+ GPU blocks : x/2560, y/128, z/1
+ GPU grids  : x/10384, y/64
+ numloops   : 10
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 0.289785 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : on ( unified memory )
+ GPU blocks : x/2560, y/128, z/1
+ GPU grids  : x/10384, y/64
+ numloops   : 10
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 0.572624 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : off
+ numloops   : 100
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 5.571912 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : on
+ GPU blocks : x/2560, y/128, z/1
+ GPU grids  : x/10384, y/64
+ numloops   : 100
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 9.348683 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : on ( page-locked )
+ GPU blocks : x/2560, y/128, z/1
+ GPU grids  : x/10384, y/64
+ numloops   : 100
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 2.786590 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : on ( unified memory )
+ GPU blocks : x/2560, y/128, z/1
+ GPU grids  : x/10384, y/64
+ numloops   : 100
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 2.862334 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : off
+ numloops   : 1000
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 55.655423 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : on
+ GPU blocks : x/2560, y/128, z/1
+ GPU grids  : x/10384, y/64
+ numloops   : 1000
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 91.784389 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : on ( page-locked )
+ GPU blocks : x/2560, y/128, z/1
+ GPU grids  : x/10384, y/64
+ numloops   : 1000
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 27.944853 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : on ( unified memory )
+ GPU blocks : x/2560, y/128, z/1
+ GPU grids  : x/10384, y/64
+ numloops   : 1000
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 27.000640 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : off
+ numloops   : 10000
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 554.260218 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : on
+ GPU blocks : x/2560, y/128, z/1
+ GPU grids  : x/10384, y/64
+ numloops   : 10000
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 916.207106 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : on ( page-locked )
+ GPU blocks : x/2560, y/128, z/1
+ GPU grids  : x/10384, y/64
+ numloops   : 10000
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 279.930104 s
+
+===============================
+ parameters : value
+-------------------------------
+ debug mode : off
+ cuda mode  : on ( unified memory )
+ GPU blocks : x/2560, y/128, z/1
+ GPU grids  : x/10384, y/64
+ numloops   : 10000
+ width      : 3840
+ height     : 2160
+ channels   : 3
+===============================
+
+[TEST](1): Loop time.: 267.916576 s
