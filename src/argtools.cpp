@@ -13,7 +13,7 @@ int _roundup(const int value, const int radix)
 }
 
 void init_params ( bool *mode_debug, bool *mode_cuda, bool *mode_pagelock, bool *mode_cuda_um,
-                   int *numloops, int *width, int *height, int *channels,
+                   int *numloops, int *width, int *height,
                    int (*dim_block)[3], int (*dim_grid)[2] )
 {
     *mode_debug = false;
@@ -24,111 +24,155 @@ void init_params ( bool *mode_debug, bool *mode_cuda, bool *mode_pagelock, bool 
     *numloops = 1;
     *width = 1;
     *height = 1;
-    *channels = 1;
 
     (*dim_block)[0] = 0; // for differentiating whether specificated ( > 0 ) or not
-    (*dim_block)[1] = 1;
-    (*dim_block)[2] = 1;
+    (*dim_block)[1] = 0;
+    (*dim_block)[2] = 0;
     (*dim_grid)[0] = 0; // for differentiating whether specificated ( > 0 ) or not
-    (*dim_grid)[1] = 1;
+    (*dim_grid)[1] = 0;
 
 }
 
-void adjust_cudaparams ( int (*dim_block)[3], int (*dim_grid)[2], bool *mode_pagelock, bool *mode_cuda_um,
-                         const bool mode_cuda, const int width, const int height, const int channels )
+int adjust_cudaparams ( int (*dim_block)[3], int (*dim_grid)[2], bool *mode_pagelock, bool *mode_cuda_um,
+                        const bool mode_cuda, const int width, const int height )
 {
     if ( !mode_cuda ){
         *mode_pagelock = false;
         *mode_cuda_um = false;
-        return;
+        return 0;
     }
 
     // Page-lock or Unified memory mode
-    if ( *mode_cuda_um ) *mode_pagelock = false;
+    if ( *mode_pagelock && *mode_cuda_um )
+    {
+        std::cout << "WARNING: Page-locking and unified memory was specified. Page-locking will be ignored." << std::endl;
+        *mode_pagelock = false;
+    }
 
-    // block/grid params
-    if ( (*dim_block)[0] > 0 && (*dim_grid)[0] > 0 ) return; // specificated
+    bool bdbx = ( (*dim_block)[0] == 0 ), bdby = ( (*dim_block)[1] == 0 ), bdbz = ( (*dim_block)[2] == 0 );
+    bool bdgx = ( (*dim_grid)[0] == 0 ), bdgy = ( (*dim_grid)[1] == 0 );
 
-    bool bdb = ( (*dim_block)[0] == 0 );
-    bool bdg = ( (*dim_grid)[0] == 0 );
-    int db = (*dim_block)[0];
-    int dg = (*dim_grid)[0];
+    int cudaDim = 0;
+    if ( !bdbx || !bdgx ) cudaDim = 1;
+    if ( !bdby || !bdgy ) cudaDim = 2;
+    if ( !bdbz ) cudaDim = 3;
 
-    int size = width*height*channels;
-    if ( size == 1e0 )
+    if ( *mode_cuda_um && cudaDim > 1 )
     {
-        if ( bdb && bdg )
+        std::cout << "WARNING: CUDA multi dimension is not supported on an unified memory system. 1D dimension will be used." << std::endl;
+
+        if ( cudaDim == 2 )
         {
-            (*dim_block)[0] = 1;
-            (*dim_grid)[0] = 1;
+            if ( !bdbx && !bdby )
+            {
+                (*dim_block)[0] = (*dim_block)[0]*(*dim_block)[1];
+                (*dim_block)[1] = 1;
+            }
+            if ( !bdgx && !bdgy )
+            {
+                (*dim_grid)[0] = (*dim_grid)[0]*(*dim_grid)[1];
+                (*dim_grid)[1] = 1;
+            }
         }
-        else if ( bdb && !bdg ) (*dim_block)[0] = 1;
-        else if ( !bdb && bdg ) (*dim_grid)[0] = 1;
+        else if ( cudaDim == 3 )
+        {
+            if ( !bdbx && !bdby && !bdbz )
+            {
+                (*dim_block)[0] = (*dim_block)[0]*(*dim_block)[1]*(*dim_block)[2];
+                (*dim_block)[1] = (*dim_block)[2] = 1;
+            }
+            if ( !bdgx && !bdgy )
+            {
+                (*dim_grid)[0] = (*dim_grid)[0]*(*dim_grid)[1];
+                (*dim_grid)[1] = 1;
+            }
+        }
+
+        cudaDim = 1;
     }
-    else if ( size < 1e1 )
+
+    // not supported now
+    if ( cudaDim == 3 )
     {
-        if ( bdb && bdg )
-        {
-            (*dim_block)[0] = 4;
-            (*dim_grid)[0] = 4;
-        }
-        else if ( bdb && !bdg ) (*dim_block)[0] = _roundup(size, dg);
-        else if ( !bdb && bdg ) (*dim_grid)[0] = _roundup(size, db);
+        std::cout << "WARNING: CUDA 3D dimension is not supported. 2D dimension will be used." << std::endl;
+        cudaDim = 2;
     }
-    else if ( size < 1e2 )
+
+    int size = width*height;
+    int dbx = (*dim_block)[0], dby = (*dim_block)[1], dbz = (*dim_block)[2];
+    int dgx = (*dim_grid)[0], dgy = (*dim_grid)[1];
+
+    if ( cudaDim == 0 ) // bdbx and bdgx
     {
-        if ( bdb && bdg )
-        {
-            (*dim_block)[0] = 8;
-            (*dim_grid)[0] = _roundup(size, 8);
-        }
-        else if ( bdb && !bdg ) (*dim_block)[0] = _roundup(size, dg);
-        else if ( !bdb && bdg ) (*dim_grid)[0] = _roundup(size, db);
+        (*dim_block)[0] = 128;
+        (*dim_grid)[0] = _roundup(size, 128);
+        cudaDim = 1;
+
+        (*dim_block)[1] = (*dim_block)[2] = 1;
+        (*dim_grid)[1] = 1;
+
     }
-    else if ( size < 1e3 )
+    else if ( cudaDim == 1 ) // !bdbx or !bdgx
     {
-        if ( bdb && bdg )
-        {
-            (*dim_block)[0] = 16;
-            (*dim_grid)[0] = _roundup(size, 16);
-        }
-        else if ( bdb && !bdg ) (*dim_block)[0] = _roundup(size, dg);
-        else if ( !bdb && bdg ) (*dim_grid)[0] = _roundup(size, db);
+        if ( !bdbx && bdgx ) (*dim_grid)[0] = _roundup(size, dbx);
+        else if ( bdbx && !bdgx ) (*dim_block)[0] = _roundup(size, dgx);
+
+        (*dim_block)[1] = (*dim_block)[2] = 1;
+        (*dim_grid)[1] = 1;
+
     }
-    else if ( size < 1e4 )
+    else if ( cudaDim == 2 ) // !bdby or !bdgy
     {
-        if ( bdb && bdg )
+        if ( !bdbx && !bdby && bdgx && bdgy )
         {
-            (*dim_block)[0] = 32;
-            (*dim_grid)[0] = _roundup(size, 32);
+            (*dim_grid)[0] = _roundup(width, dbx);
+            (*dim_grid)[1] = _roundup(height, dby);
         }
-        else if ( bdb && !bdg ) (*dim_block)[0] = _roundup(size, dg);
-        else if ( !bdb && bdg ) (*dim_grid)[0] = _roundup(size, db);
+        else if ( !bdbx && !bdby && !bdgx && bdgy )
+        {
+            (*dim_grid)[1] = _roundup(height, dby);
+        }
+        else if ( bdbx && bdby && !bdgx && !bdgy )
+        {
+            (*dim_block)[0] = _roundup(width, dgx);
+            (*dim_block)[1] = _roundup(height, dgy);
+        }
+        else if ( !bdbx && bdby && !bdgx && !bdgy )
+        {
+            (*dim_block)[1] = _roundup(height, dgy);
+        }
+
+        (*dim_block)[2] = 1;
+
     }
-    else if ( size < 1e5 )
+    else if ( cudaDim == 3 ) // !bdbz
     {
-        if ( bdb && bdg )
+        if ( !bdbx && !bdby && !bdbz && bdgx && bdgy )
         {
-            (*dim_block)[0] = 64;
-            (*dim_grid)[0] = _roundup(size, 64);
+            (*dim_grid)[0] = _roundup(width, dbx);
+            (*dim_grid)[1] = _roundup(height, dby);
         }
-        else if ( bdb && !bdg ) (*dim_block)[0] = _roundup(size, dg);
-        else if ( !bdb && bdg ) (*dim_grid)[0] = _roundup(size, db);
-    }
-    else
-    {
-        if ( bdb && bdg )
+        else if ( !bdbx && !bdby && !bdbz && !bdgx && bdgy )
         {
-            (*dim_block)[0] = 128;
-            (*dim_grid)[0] = _roundup(size, 128);
+            (*dim_grid)[1] = _roundup(height, dby);
         }
-        else if ( bdb && !bdg ) (*dim_block)[0] = _roundup(size, dg);
-        else if ( !bdb && bdg ) (*dim_grid)[0] = _roundup(size, db);
+        else if ( bdbx && bdby && bdbz && !bdgx && !bdgy )
+        {
+            (*dim_block)[0] = _roundup(width, dgx);
+            (*dim_block)[1] = _roundup(height, dgy);
+        }
+        else if ( !bdbx && bdby && bdbz && !bdgx && !bdgy )
+        {
+            (*dim_block)[1] = _roundup(height, dgy);
+        }
     }
+
+    return cudaDim;
+
 }
 
 void get_args ( bool *mode_debug, bool *mode_cuda, bool *mode_pagelock, bool *mode_cuda_um,
-                int *numloops, int *width, int *height, int *channels,
+                int *numloops, int *width, int *height,
                 int (*dim_block)[3], int (*dim_grid)[2],
                 const int argc, const char **argv )
 {
@@ -138,14 +182,13 @@ void get_args ( bool *mode_debug, bool *mode_cuda, bool *mode_pagelock, bool *mo
 		std::cout << "options:" << std::endl;
 		std::cout << "    -h | --help           : Help options." << std::endl;
 		std::cout << "    -v | --verbose        : Debug logs." << std::endl;
-		std::cout << "    -c | --cuda           : (on/off) Use CUDA computing." << std::endl;
-        std::cout << "    -p | --page-lock      : (on/off) Use page-locked memory." << std::endl;
-		std::cout << "    -u | --unified-memory : (on/off) Use unified memory system." << std::endl;
+		std::cout << "    -c | --cuda           : Use CUDA computing." << std::endl;
+        std::cout << "    -p | --page-lock      : Use page-locked memory." << std::endl;
+		std::cout << "    -u | --unified-memory : Use unified memory system." << std::endl;
 		std::cout << "    -r | --resolution     : (QQVGA/QVGA/VGA/XGA/HD/FHD/2K/3K/4K/5K/6K/8K/10K/16K)" << std::endl;
         std::cout << "    -N | --num-loops      : (int value) Number of image processing loops." << std::endl;
 		std::cout << "    -W | --width          : (int value) Image width." << std::endl;
 		std::cout << "    -H | --height         : (int value) Image height." << std::endl;
-		std::cout << "    -C | --channels       : (int value) Number of image color channels." << std::endl;
 		std::cout << "    -B | --blocks         : (int value) Number of GPU blocks." << std::endl;
 		std::cout << "    -G | --grids          : (int value) Number of GPU grids." << std::endl;
 		std::cout << std::endl;
@@ -165,7 +208,6 @@ void get_args ( bool *mode_debug, bool *mode_cuda, bool *mode_pagelock, bool *mo
              argstr != "-N" && argstr != "--num-loops" &&
 			 argstr != "-W" && argstr != "--width" &&
 			 argstr != "-H" && argstr != "--height" &&
-			 argstr != "-C" && argstr != "--channels" &&
 			 argstr != "-B" && argstr != "--blocks" &&
 			 argstr != "-G" && argstr != "--grids"
 		)
@@ -180,14 +222,13 @@ void get_args ( bool *mode_debug, bool *mode_cuda, bool *mode_pagelock, bool *mo
 			std::cout << "options:" << std::endl;
 			std::cout << "    -h | --help           : Help options." << std::endl;
 			std::cout << "    -v | --verbose        : Debug logs." << std::endl;
-			std::cout << "    -c | --cuda           : (on/off) Use CUDA computing." << std::endl;
-            std::cout << "    -p | --page-lock      : (on/off) Use page-locked memory." << std::endl;
-			std::cout << "    -u | --unified-memory : (on/off) Use unified memory system." << std::endl;
+			std::cout << "    -c | --cuda           : Use CUDA computing." << std::endl;
+            std::cout << "    -p | --page-lock      : Use page-locked memory." << std::endl;
+			std::cout << "    -u | --unified-memory : Use unified memory system." << std::endl;
 			std::cout << "    -r | --resolution     : (QQVGA/QVGA/VGA/XGA/HD/FHD/2K/3K/4K/5K/6K/8K/10K/16K)" << std::endl;
 			std::cout << "    -N | --num-loops      : (int value) Number of image processing loops." << std::endl;
 			std::cout << "    -W | --width          : (int value) Image width." << std::endl;
 			std::cout << "    -H | --height         : (int value) Image height." << std::endl;
-			std::cout << "    -C | --channels       : (int value) Number of image color channels." << std::endl;
 			std::cout << "    -B | --blocks         : (int value) Number of GPU blocks." << std::endl;
             std::cout << "    -G | --grids          : (int value) Number of GPU grids." << std::endl;
 			std::cout << std::endl;
@@ -197,54 +238,15 @@ void get_args ( bool *mode_debug, bool *mode_cuda, bool *mode_pagelock, bool *mo
 			*mode_debug = true;
 		if ( argstr == "-c" || argstr == "--cuda" )
 		{
-			if ( j+1 == argc )
-			{
-				std::cerr << "ERROR: No command found." << std::endl;
-				exit(1);
-			}
-			std::string argval = std::string(argv[j+1]);
-			if ( argval == "on" ) *mode_cuda = true;
-			else if ( argval == "off" ) *mode_cuda = false;
-			else
-			{
-				std::cerr << "ERROR: Unknown command found." << std::endl;
-				exit(1);
-			}
-			j ++;
+			*mode_cuda = true;
 		}
 		if ( argstr == "-p" || argstr == "--page-lock" )
 		{
-			if ( j+1 == argc )
-			{
-				std::cerr << "ERROR: No command found." << std::endl;
-				exit(1);
-			}
-			std::string argval = std::string(argv[j+1]);
-			if ( argval == "on" ) *mode_pagelock = true;
-			else if ( argval == "off" ) *mode_pagelock = false;
-			else
-			{
-				std::cerr << "ERROR: Unknown command found." << std::endl;
-				exit(1);
-			}
-			j ++;
+            *mode_pagelock = true;
 		}
 		if ( argstr == "-u" || argstr == "--unified-memory" )
 		{
-			if ( j+1 == argc )
-			{
-				std::cerr << "ERROR: No command found." << std::endl;
-				exit(1);
-			}
-			std::string argval = std::string(argv[j+1]);
-			if ( argval == "on" ) *mode_cuda_um = true;
-			else if ( argval == "off" ) *mode_cuda_um = false;
-			else
-			{
-				std::cerr << "ERROR: Unknown command found." << std::endl;
-				exit(1);
-			}
-			j ++;
+			*mode_cuda_um = true;
 		}
 		if ( argstr == "-r" || argstr == "--resolution" )
 		{
@@ -364,23 +366,6 @@ void get_args ( bool *mode_debug, bool *mode_cuda, bool *mode_pagelock, bool *mo
 			*height = num;
 			j ++;
 		}
-		if ( argstr == "-C" || argstr == "--channels" )
-		{
-			if ( j+1 == argc )
-			{
-				std::cerr << "ERROR: No command found." << std::endl;
-				exit(1);
-			}
-			char *endptr;
-			int num = strtol(argv[j+1], &endptr, 10);
-			if (*endptr != '\0' || (num == INT_MAX && ERANGE == 0))
-			{
-				std::cerr << "ERROR: Irregal value has inputted" << std::endl;
-				exit(1);
-			}
-			*channels = num;
-			j ++;
-		}
 		if ( argstr == "-B" || argstr == "--blocks" )
 		{
 			if ( j+1 == argc )
@@ -401,7 +386,7 @@ void get_args ( bool *mode_debug, bool *mode_cuda, bool *mode_pagelock, bool *mo
                 num = strtol(argv[j+2], &endptr, 10);
                 if (*endptr != '\0' || (num == INT_MAX && ERANGE == 0))
                 {
-                    (*dim_block)[1] = (*dim_block)[2] = 1;
+                    (*dim_block)[1] = (*dim_block)[2] = 0;
                     j ++;
                     continue;
                 }
@@ -413,7 +398,7 @@ void get_args ( bool *mode_debug, bool *mode_cuda, bool *mode_pagelock, bool *mo
                         num = strtol(argv[j+3], &endptr, 10);
                         if (*endptr != '\0' || (num == INT_MAX && ERANGE == 0))
                         {
-                            (*dim_block)[2] = 1;
+                            (*dim_block)[2] = 0;
                             j += 2;
                             continue;
                         }
@@ -425,14 +410,14 @@ void get_args ( bool *mode_debug, bool *mode_cuda, bool *mode_pagelock, bool *mo
                     }
                     else
                     {
-                            (*dim_block)[2] = 1;
+                            (*dim_block)[2] = 0;
                             j += 2;
                     }
                 }
             }
             else
             {
-                (*dim_block)[1] = (*dim_block)[2] = 1;
+                (*dim_block)[1] = (*dim_block)[2] = 0;
                 j ++;
             }
 		}
@@ -456,7 +441,7 @@ void get_args ( bool *mode_debug, bool *mode_cuda, bool *mode_pagelock, bool *mo
                 num = strtol(argv[j+2], &endptr, 10);
                 if (*endptr != '\0' || (num == INT_MAX && ERANGE == 0))
                 {
-                    (*dim_grid)[1] = 1;
+                    (*dim_grid)[1] = 0;
                     j ++;
                     continue;
                 }
@@ -468,7 +453,7 @@ void get_args ( bool *mode_debug, bool *mode_cuda, bool *mode_pagelock, bool *mo
             }
             else
             {
-                (*dim_grid)[1] = 1;
+                (*dim_grid)[1] = 0;
                 j ++;
             }
 		}
@@ -476,8 +461,8 @@ void get_args ( bool *mode_debug, bool *mode_cuda, bool *mode_pagelock, bool *mo
 }
 
 void disp_args ( const bool mode_debug, const bool mode_cuda, const bool mode_pagelock, const bool mode_cuda_um,
-                 const int numloops, const int width, const int height, const int channels,
-                 const int dim_block[3], const int dim_grid[2] )
+                 const int numloops, const int width, const int height,
+                 const int cudaDim, const int dim_block[3], const int dim_grid[2] )
 {
 	std::cout << std::endl;
 	std::cout << "===============================" << std::endl;
@@ -491,19 +476,22 @@ void disp_args ( const bool mode_debug, const bool mode_cuda, const bool mode_pa
 	if ( mode_cuda )
 	{
 		std::cout << "on";
-		if ( mode_cuda_um && !mode_pagelock ) std::cout << " ( unified memory )";
-        else if ( !mode_cuda_um && mode_pagelock ) std::cout << " ( page-locked )";
+		if ( mode_cuda_um ) std::cout << " ( unified memory )";
+        else if ( mode_pagelock ) std::cout << " ( page-locked )";
 		std::cout << std::endl;
 
-		std::cout << " GPU blocks : " << "x/" << dim_block[0] << ", y/" << dim_block[1] << ", z/" << dim_block[2] << std::endl;
-		std::cout << " GPU grids  : " << "x/" << dim_grid[0] << ", y/" << dim_grid[1];
+		std::cout << " GPU blocks : " << "x/" << dim_block[0];
+        if ( cudaDim > 1 ) std::cout << ", y/" << dim_block[1];
+        if ( cudaDim > 2 ) std::cout << ", z/" << dim_block[2];
+        std::cout << std::endl;
+		std::cout << " GPU grids  : " << "x/" << dim_grid[0];
+        if ( cudaDim > 1 ) std::cout << ", y/" << dim_grid[1];
 	}
 	else std::cout << "off";
 	std::cout << std::endl;
     std::cout << " numloops   : " << numloops << std::endl;
 	std::cout << " width      : " << width << std::endl;
 	std::cout << " height     : " << height << std::endl;
-	std::cout << " channels   : " << channels << std::endl;
 	std::cout << "===============================" << std::endl;
 	std::cout << std::endl;
 }
